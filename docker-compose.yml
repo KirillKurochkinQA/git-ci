@@ -10,7 +10,7 @@ services:
       STAGE: ${STAGE}
       MARKER: ${MARKER}
       THREADS: ${THREADS}
-    command: /bin/sh -c "STAGE=$$STAGE pytest -sv -o log_cli=true -m=$$MARKER -n=$$THREADS --alluredir=allure-report
+    command: /bin/sh -c "STAGE=$$STAGE pytest -sv -o log_cli=true -m=$$MARKER -n=$$THREADS --alluredir=allure-report"
     tty: true
 
   report:
