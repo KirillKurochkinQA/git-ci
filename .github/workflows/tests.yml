@@ -1,0 +1,83 @@
+name: UI Tests
+run-name: Test ${{ github.event.inputs.STAGE}} | ${{ github.event.inputs.MARKER}} marker | ${{ github.event.inputs.THREADS}} threads
+
+on:
+  workflow_dispatch:
+    inputs:
+      ENV:
+        description: "Choose environment"
+        required: true
+        type: environment
+
+      BROWSER:
+        description: "Select browser"
+        required: true
+        default: "chrome"
+        type: choice
+        options:
+          - chrome
+          - firefox
+
+      MARKER:
+        description: "Select pytest marker"
+        required: true
+        default: "smoke"
+        type: choice
+        options:
+          - smoke
+          - regression
+
+      THREADS:
+        description: "Select threads count"
+        required: false
+        default: "2"
+        type: choice
+        options:
+          - "4"
+          - "6"
+
+jobs:
+  ui-tests:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ENV }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/checkout@v2
+        with:
+          ref: gh-pages
+          path: ./.github/gh-pages
+
+      - name: Prepare Allure environment
+        run: |
+          mkdir -p allure-results
+          echo "Branch=${{ github.ref_name }}" > allure-results/environment.properties
+          echo "Commit=${{ github.sha }}" >> allure-results/environment.properties
+          echo "Browser=${{ inputs.BROWSER }}" >> allure-results/environment.properties
+          echo "Environment=${{ inputs.ENV }}" >> allure-results/environment.properties
+
+      - name: Run UI Tests via docker-compose
+        env:
+          STAGE: ${{ secrets.STAGE }}
+          MARKER: ${{ inputs.MARKER }}
+          THREADS: ${{ inputs.THREADS }}
+        run: docker compose up tests
+
+      - name: Copy Allure history
+        run: |
+          mkdir -p allure-results/history
+          if [ -d "./.github/gh-pages/history" ]; then
+            cp -R ./.github/gh-pages/history/* allure-results/history/
+          fi
+
+      - name: Generate Allure-report
+        run: docker compose up report
+
+      - name: Deploy to Github Pages
+        uses: JamesIves/github-pages-deploy-action@4.1.5
+        with:
+          token: ${{ secrets.CI_TOKEN }}
+          branch: gh-pages
+          folder: allure-report
+          clean: false
